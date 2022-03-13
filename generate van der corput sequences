@@ -1,0 +1,19 @@
+%Function to generate a Van der corput sequence
+%s_length is the sequence length
+function vdc_sequence=vdcs_gen(s_length,base)
+    vdc_sequence = zeros(1,s_length);
+    for i = 1:s_length
+        vdc_sequence(i)=vdcn_gen(i,base);
+    end
+end
+
+function vdc_number=vdcn_gen(n,base)
+    vdc_number=0;
+    base_inv=1/base;
+    while(n>0)
+        vdc_number=vdc_number+mod(n,base)*base_inv;
+        n=fix(n/base);
+        base_inv=base_inv/base;
+    end
+end
+
