@@ -1,0 +1,181 @@
+% Irregular sampling with van der corput sequence
+% fs = 16kHz
+close all
+% Read the audio file
+[x,fs] = audioread('D:\matlab\SA1.WAV');  
+%[x,fs] = audioread('D:\work\signal processing\van der coput\SA1.WAV');  % Read the audio file
+x_len = length(x);
+y = resample(x,100,1);
+T = 1/fs;  % Sampling period
+y_len = length(y);
+vdc_len = x_len;
+
+base = 2;   % Binary van der corput sequence
+vdc_sequence = vdcs_gen(vdc_len,base);
+tinterval=sum(vdc_sequence)/length(vdc_sequence);
+vdc_time_points = zeros(1,vdc_len);
+vdc_sampled_y = zeros(1,vdc_len);
+
+% Calculate the sampling points
+% Sample x(t) irregularly with van der corput sequence
+%vdc_sampled_y = sin(2*pi*fs*vdc_time_points);
+%a  = fs * vdc_time_points;
+for i = 1:vdc_len
+    vdc_time_points(i) = sum(vdc_sequence(1:i));
+    %vdc_sampled_position = seconds(vdc_time_points);
+    %vdc_sample_position = round(vdc_time_points(i));
+    numSamples = round(vdc_time_points(i)*200);
+    vdc_sampled_y(i) = y(numSamples);
+    %vdc_sampled_y(i) = y(vdc_sample_position);
+end
+ %numSamples = round(vdc_time_points/fs);
+ %vdc_sampled_y(i) = y(numSamples);
+%%
+figure (1)
+plot(vdc_time_points,vdc_sampled_y,'o',vdc_time_points,x,'r')
+figure (2)
+plot(vdc_time_points,x)
+figure (3)
+plot(y)
+figure (4)
+plot(vdc_time_points,vdc_sampled_y)
+%% Perform fft of original signal
+%xFFT = fft(x);
+xFFT = fft(x);
+mag_xFFT = abs(xFFT)/x_len;
+fo = (0:x_len-1)/x_len*fs;
+%t = (0:x_len-1)*T;
+figure (5)
+plot(fo,mag_xFFT);
+title('Spectrum of Original Audio Signal');
+xlabel('Frequency f (Hz)');
+ylabel('Amplitude');
+
+vfft = fft(vdc_sampled_y);
+mag_vFFT = abs(vfft)/x_len;
+fv = (0:x_len-1)/x_len*fs;
+figure (6)
+plot(fv,mag_vFFT);
+
+%%
+%% Calculate van der corput sequence sampled spectrum of x(t)
+% where x(t) is the original audio signal
+%deltaf=1/(length(vdc_sequence)*(1/fs));
+%k=146000;
+%f_range = k*deltaf;
+vdc_sampled_spectrum = zeros(1,vdc_len);
+%f = -f_range:f_range
+for f = 1:vdc_len
+    wi = 2*pi*(-1i)/vdc_len;
+    for k = 1:vdc_len
+        %index = 0:1:vdc_len 
+        vdc_sampled_spectrum(f) = vdc_sampled_spectrum(f) + vdc_sampled_y(k)*exp(wi*(k-1)*(f-1));
+        %vdc_sampled_spectrum(f+f_range+1) = vdc_sampled_spectrum(f+f_range+1) + exp(-1i*wi*vdc_time_points(i)*tinterval);
+        %vdc_sampled_spectrum(f+fs+1) = vdc_sampled_spectrum(f+fs+1) + vdc_sampled_x(i)*exp(-1i*wi*vdc_time_points(i)*T);
+        %vdc_sampled_spectrum(f+f_range+1) = vdc_sampled_spectrum(f+f_range+1) + exp(-1i*wi*index*tinterval);
+    end
+end
+
+%xresamolebyvan = xresamolebyvan + vdc_sampled_y(i) * vdc_sampled_spectrum;
+fvdc = (0:vdc_len-1)/vdc_len*fs;
+y_vdc_sampled_spectrum = (abs(vdc_sampled_spectrum)/(vdc_len));
+%y1_vdc_sampled_spectrum = y_vdc_sampled_spectrum*exp(-1i*wi*vdc_time_points(i)*T):
+figure (7)
+plot(fvdc,y_vdc_sampled_spectrum);
+title('Spectrum of Van Der Corput Sequence Sampled Signal');
+xlabel('Frequency f (Hz)');
+ylabel('Amplitude');
+%%
+y1 = ifft(vdc_sampled_spectrum);
+mag_y1fft = abs(y1)/vdc_len;
+f1 = (0:vdc_len-1)/vdc_len.*fs;
+%f1 = (0:x_len-1)/x_len*fs;
+figure (8)
+plot(f1,y1)
+title('restructe of resampled signal')
+
+%% Add an out of band signal z(t)
+% Assume the frequency of z(t)=Asin(wt) is 20KHz
+fz = 20000;
+% Sample z(t) regularly with fs=16000 
+tz = 0:1/fs:(vdc_len-1)/fs;
+% Assume the amplitude A is 1
+z = sin(2*pi*fz*tz);
+z_len = length(z);
+z1 = resample(z,100,1);
+figure (9)
+plot(z)
+% fft of z
+zFFT = fft(z);
+mag_zFFT = abs(zFFT)/z_len;
+fz1 = (0:z_len-1)/z_len*fs;
+figure (10)
+plot(fz1,mag_zFFT);
+title('Spectrum of Out of Band Signal');
+xlabel('Frequency f (Hz)');
+ylabel('Amplitude');
+
+% Add x(t) with z(t)    
+xob = x + z';
+
+%% Perform fft of regular xob
+xobFFT = fft(xob);
+mag_xobFFT = abs(xobFFT)/x_len;
+fob1 = (0:x_len-1)/x_len*(fs);
+figure (11)
+plot(fob1,mag_xobFFT);
+title('Spectrum of Original Audio Signal Added with z(t)');
+xlabel('Frequency f (Hz)');
+ylabel('Amplitude');
+%%
+vdc_sampled_z = zeros(1,vdc_len);
+for i = 1:vdc_len
+    vdc_time_points(i) = sum(vdc_sequence(1:i));
+    numSamples1 = round(vdc_time_points(i)*2);
+    vdc_sampled_z(i) = z(numSamples1);
+end
+zvFFT = fft(vdc_sampled_z);
+mag_zvFFT = abs(zvFFT)/z_len;
+fz1 = (0:z_len-1)/z_len*fs;
+figure 
+plot(fz1,mag_zvFFT);
+%% Sample z(t) irregularly with van der corput sequence 
+% Just replace index i with van der corput time point
+vdc_tz = vdc_time_points/fs;
+vdc_sampled_z = sin(2*pi*fz*vdc_tz);
+vdc_sampled_xob = vdc_sampled_y + vdc_sampled_z;
+%vdc_sampled_xob = vdc_sampled_y;
+%vdc_sampled_xob = vdc_sampled_z;
+figure
+plot(vdc_sampled_z(1:100))
+figure
+plot(vdc_sampled_xob)
+
+%% Calculate van der corput sequence sampled spectrum of xob(t)
+%f_range = 2*fs;   % w numbers
+%fs = -f_range:f_range;
+%fs = -fs:fs;
+vdc_xob_len = length(vdc_sampled_xob);
+vdc_sampled_xob_spectrum = zeros(1,vdc_xob_len);
+%w = 2*pi*fs/fs;
+fvdc_xob = (0:vdc_xob_len-1)/vdc_xob_len*fs;
+for f = 1:vdc_xob_len
+    wi = 2*pi*(-1i)/vdc_xob_len;
+    for k = 1:vdc_xob_len
+        %index = 0:1:vdc_len 
+        vdc_sampled_xob_spectrum(f) = vdc_sampled_xob_spectrum(f) + vdc_sampled_xob(k)*exp(wi*(k-1)*(f-1));
+    end
+end
+%plot(vdc_time_points,vdc_sampled);
+y_vdc_sampled_xob_spectrum = abs(vdc_sampled_xob_spectrum)/(vdc_xob_len);
+figure (13)
+plot(fvdc_xob,y_vdc_sampled_xob_spectrum);
+title('Spectrum of Van Der Corput Sequence Sampled Signal Added with z(t)');
+xlabel('Frequency f (Hz)');
+ylabel('Amplitude');
+
+%%
+zvfft = ifft(vdc_sampled_xob_spectrum);
+figure
+plot(fvdc_xob,zvfft)
+
